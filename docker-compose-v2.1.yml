@@ -1,0 +1,48 @@
+version: "3.3"
+
+networks:
+  sdinc_over:
+    external:
+      name: "sdinc_over"
+  traefik_net:
+    external:
+      name: "traefik_net"
+      
+services:
+# docker pull jaegertracing/all-in-one:1
+
+  traefik:
+    image: "traefik:v2.1"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      #- "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.docker.swarmMode=true"
+      - "--entrypoints.web.address=:91"
+      - "--entrypoints.web=true"
+      - "--providers.docker.network=traefik_net"
+      # test config
+      - "--tracing=true"
+    ports:
+      - "91:91"
+      - "92:8080"
+    networks:
+      - traefik_net
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  whoami:
+    image: "containous/whoami"
+    networks:
+      - traefik_net
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)"
+        - "traefik.http.routers.whoami.entrypoints=web"
+        - "traefik.http.routers.whoami.service=whoami"
+        - "traefik.http.services.whoami.loadbalancer.server.port=80"
+
+
